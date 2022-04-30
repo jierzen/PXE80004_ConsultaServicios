@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: consultaservicios
+    app.kubernetes.io/component: consultaservicios
+    app.kubernetes.io/instance: consultaservicios
+    app.openshift.io/runtime: fuse
+  name: consultaservicios
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.openshift.io/runtime: fuse
+      deploymentconfig: consultaservicios
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.openshift.io/runtime: fuse
+        deploymentconfig: consultaservicios
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: consultaservicio
+        - secretRef:
+            name: secretconsultaservicio
+        image: image-registry.openshift-image-registry.svc:5000/desarrollo/consultaservicios:latest
+        imagePullPolicy: Always
+        name: consultaservicios
+        ports:
+        - containerPort: 8443
+          protocol: TCP
+        - containerPort: 8778
+          protocol: TCP
+        - containerPort: 9779
+          protocol: TCP
+        - containerPort: 8080
+          protocol: TCP
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30

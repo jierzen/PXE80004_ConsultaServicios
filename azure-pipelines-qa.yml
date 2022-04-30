@@ -1,0 +1,126 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java 
+
+#modificar a develop
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nombre-ms: consultaservicios
+  namespace-dev: desarrollo
+  img-registry-dev: image-registry.openshift-image-registry.svc:5000
+  nombre-jar: PXE80004_ConsultaServicios-1.0.0-SNAPSHOT.jar
+  mvn-settings-path: configuration/settings.xml
+
+steps:
+#https://docs.sonarqube.org/latest/analysis/azuredevops-integration/
+
+#- task: SonarQubePrepare@5
+#  inputs:
+#    SonarQube: 'sonar-aminerals'
+#    scannerMode: 'Other'
+
+##https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/package/maven-authenticate?view=azure-devops
+#- task: MavenAuthenticate@0
+#  inputs:
+#    artifactsFeeds: 'ms-utils-libs'
+#    mavenServiceConnections: 'Artifact-ms-utils-libs'
+
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'sonarCloud'
+    organization: 'antofagastaminerals'
+    scannerMode: 'Other'
+    extraProperties: |
+      sonar.exclusions=**/*.bin
+      sonar.projectKey=antofagastaminerals_PXE80004_ConsultaServicios
+      sonar.projectName=PXE80004_ConsultaServicios
+
+- task: Maven@3
+  displayName: Maven package y Tests
+  inputs:
+    mavenPomFile: 'pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.11'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: 'target/surefire-reports/TEST-*.xml'
+    goals: 'package -s $(mvn-settings-path)'
+    sonarQubeRunAnalysis: true
+    sqMavenPluginVersionChoice: 'latest'
+
+
+- task: SonarCloudAnalyze@1
+
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+
+- task: KubernetesManifest@0
+  displayName: Creacion objetos yaml
+  inputs:
+    action: 'deploy'
+    namespace: '$(namespace-dev)'
+    kubernetesServiceConnection: 'demopipe'
+    manifests: |
+      manifests/bc.yaml
+      manifests/is.yaml
+      manifests/configmap.yaml
+      manifests/sealed_secret.yaml
+      manifests/svc.yaml
+
+- task: oc-cmd@2
+  displayName: Chage porject
+  inputs:
+    connectionType: 'OpenShift Connection Service'
+    openshiftService: 'pipelineazuredevops'
+    cmd: 'project desarrollo'
+
+
+- task: oc-cmd@2
+  displayName: Start Build
+  inputs:
+    connectionType: 'OpenShift Connection Service'
+    openshiftService: 'pipelineazuredevops'
+    cmd: 'start-build -n $(namespace-dev) $(nombre-ms) --from-file=${SYSTEM_DEFAULTWORKINGDIRECTORY}/target/$(nombre-jar) --follow'
+
+- task: oc-cmd@2
+  displayName: Tag Imagen
+  inputs:
+    connectionType: 'OpenShift Connection Service'
+    openshiftService: 'pipelineazuredevops'
+    cmd: 'tag -n $(namespace-dev) $(nombre-ms):latest $(nombre-ms):$(Build.BuildNumber)'
+
+#- task: config-map@2
+#  inputs:
+#    connectionType: 'OpenShift Connection Service'
+#    openshiftService: 'pipelineazuredevops'
+#    configMapName: '$(nombre-ms)'
+#    namespace: '$(namespace-dev)'
+#    properties: '-sftp.passivemode true -sftp.folder /AMSASFTP/TEST'
+- task: KubernetesManifest@0
+  displayName: Creacion Deployment
+  inputs:
+    action: 'deploy'
+    namespace: '$(namespace-dev)'
+    containers: $(nombre-ms):$(Build.BuildNumber)
+    kubernetesServiceConnection: 'demopipe'
+    manifests: manifests/deployment.yaml
+
+- task: oc-cmd@2
+  displayName: Patch Deployment
+  inputs:
+    connectionType: 'OpenShift Connection Service'
+    openshiftService: 'pipelineazuredevops'
+    cmd: 'patch -n $(namespace-dev) deployment/$(nombre-ms) -p ''{"spec":{"template":{"spec":{"containers":[{"name":"$(nombre-ms)","image":"$(img-registry-dev)/$(namespace-dev)/$(nombre-ms):$(Build.BuildNumber)"}]}}}}'''
+
+#- task: SonarQubeAnalyze@5
+#- task: SonarQubePublish@5
+#  inputs:
+#    pollingTimeoutSec: '300'

@@ -1,0 +1,36 @@
+<wsdl:definitions
+	targetNamespace="http://xmlns.oracle.com/pcbpel/adapter/db/SBAppAMSA_TES_12c/SCA/db_SCAConsultaServiciosRef"
+	name="db_SCAConsultaServiciosRef-concrete"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:db="http://xmlns.oracle.com/pcbpel/adapter/db/SBAppAMSA_TES_12c/SCA/db_SCAConsultaServiciosRef">
+	<wsdl:import location="db_SCAConsultaServiciosRef.wsdl"
+		namespace="http://xmlns.oracle.com/pcbpel/adapter/db/SBAppAMSA_TES_12c/SCA/db_SCAConsultaServiciosRef" />
+	<wsdl:binding
+		name="db_SCAConsultaServiciosRef_ptt-binding"
+		type="db:db_SCAConsultaServiciosRef_ptt"
+		xmlns:db="http://xmlns.oracle.com/pcbpel/adapter/db/SBAppAMSA_TES_12c/SCA/db_SCAConsultaServiciosRef">
+		<soap:binding style="document"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="db_SCAConsultaServiciosRef">
+			<soap:operation
+				soapAction="db_SCAConsultaServiciosRef" />
+			<wsdl:input>
+				<soap:body use="literal" parts="InputParameters" />
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal" parts="OutputParameters"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service
+		name="db_SCAConsultaServiciosRef_ptt-bindingQSService">
+		<wsdl:documentation>OSB Service</wsdl:documentation>
+		<wsdl:port
+			binding="db:db_SCAConsultaServiciosRef_ptt-binding"
+			name="db_SCAConsultaServiciosRef_ptt-bindingQSPort">
+			<soap:address
+				location="http://ws.aminerals.cl:8022/SCA/PXE80004_ConsultaServicios" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>
